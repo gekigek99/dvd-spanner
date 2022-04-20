@@ -85,6 +85,7 @@ def main():
 def getFileList(folder):
 	files = []
 	for (root, dirs, file) in os.walk(folder):
+		# !!! don't skip empty folders, add them to the list so that they will be moved to dvd
 		if dirs == [] and file == []:
 				print("skipping empty folder " + root)
 				continue
