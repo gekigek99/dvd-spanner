@@ -43,6 +43,7 @@ class DVD():
 			os.path.exists(os.path.dirname(fdest)) or os.makedirs(os.path.dirname(fdest), exist_ok=True)
 			shutil.copy(forig, fdest)
 		print("folder size:".ljust(14, " "),
+				# !!! add log: % of data+par2 dedicated to par2 folder
 				(str(SizeFolder(self.folder, exclude=["_par2\\", "_dupl\\"])) + " data").rjust(15, " "),
 				(str(SizeFolder(os.path.join(self.folder, "_par2\\"))) + " par2").rjust(15, " "),
 				(str(SizeFolder(os.path.join(self.folder, "_dupl\\"))) + " dupl").rjust(15, " "))
@@ -54,6 +55,10 @@ def main():
 	dataFiles = getFileList(dataFolder)
 	par2Files = getFileList(par2Folder)
 	duplFiles = getFileList(duplFolder)
+
+	# !!! add prediction for how many dvd (and confirmation)
+	# !!! make so that all dvd have same size
+	# !!! add warning if predicted dvd size is too small (and tell how much % is possible to increase par2 size)
 
 	n = -1
 	while len(dataFiles) > 0 or len(par2Files) > 0:
