@@ -9,40 +9,48 @@ dvdSize = 500000000
 
 class DVD():
 	def __init__(self, id, dataFolderSize, par2FolderSize, duplFolderSize):
-		self.usableSizeData = (dvdSize - duplFolderSize) * (dataFolderSize / (dataFolderSize + par2FolderSize))
-		self.usableSizePar2 = (dvdSize - duplFolderSize) * (par2FolderSize / (dataFolderSize + par2FolderSize))
+		self.usableSizeData = int((dvdSize - duplFolderSize) * (dataFolderSize / (dataFolderSize + par2FolderSize)))
+		self.usableSizePar2 = int((dvdSize - duplFolderSize) * (par2FolderSize / (dataFolderSize + par2FolderSize)))
 		self.usableSizeDupl = duplFolderSize
 		self.id = id
 		self.folder = os.path.join(outFolder, "dvd" + str(self.id))
+		self.fileDic = {}
 		os.path.exists(outFolder) or os.makedirs(outFolder, exist_ok=True)
 		os.path.exists(self.folder) or os.makedirs(self.folder, exist_ok=True)
+		print(("DVD"+str(self.id)+" reserved:").ljust(14, " "), (str(self.usableSizeData)+" data").rjust(15, " "), (str(self.usableSizePar2)+" par2").rjust(15, " "), (str(self.usableSizeDupl)+" dupl").rjust(15, " "))
 	
 	def addData(self, file, fsize):
-		fileOut = os.path.join(self.folder, file.replace(dataFolder, ""))
-		print("\t".join([file, fileOut, str(fsize)])) # !!!
-		os.path.exists(os.path.dirname(fileOut)) or os.makedirs(os.path.dirname(fileOut), exist_ok=True)
-		shutil.copy(file, fileOut)
+		if self.usableSizeData < fsize:
+			return "file too big"
+		self.fileDic[file] = os.path.join(self.folder, file.replace(dataFolder, ""))
 		self.usableSizeData -= fsize
+		return None
 
 	def addPar2(self, file, fsize):
-		fileOut = os.path.join(self.folder, file.replace(par2Folder, "_par2\\"))
-		print("\t".join([file, fileOut, str(fsize)])) # !!!
-		os.path.exists(os.path.dirname(fileOut)) or os.makedirs(os.path.dirname(fileOut), exist_ok=True)
-		shutil.copy(file, fileOut)
+		if self.usableSizePar2 < fsize:
+			return "file too big"
+		self.fileDic[file] = os.path.join(self.folder, file.replace(par2Folder, "_par2\\"))
 		self.usableSizePar2 -= fsize
+		return None
 	
 	def addDupl(self, file, fsize):
-		fileOut = os.path.join(self.folder, file.replace(duplFolder, "_dupl\\"))
-		print("\t".join([file, fileOut, str(fsize)])) # !!!
-		os.path.exists(os.path.dirname(fileOut)) or os.makedirs(os.path.dirname(fileOut), exist_ok=True)
-		shutil.copy(file, fileOut)
+		self.fileDic[file] = os.path.join(self.folder, file.replace(duplFolder, "_dupl\\"))
 		self.usableSizeDupl -= fsize
+	
+	def save(self):
+		for forig in self.fileDic:
+			fdest = self.fileDic[forig]
+			os.path.exists(os.path.dirname(fdest)) or os.makedirs(os.path.dirname(fdest), exist_ok=True)
+			shutil.copy(forig, fdest)
+		print("folder size:".ljust(14, " "),
+				(str(SizeFolder(self.folder, exclude=["_par2\\", "_dupl\\"])) + " data").rjust(15, " "),
+				(str(SizeFolder(os.path.join(self.folder, "_par2\\"))) + " par2").rjust(15, " "),
+				(str(SizeFolder(os.path.join(self.folder, "_dupl\\"))) + " dupl").rjust(15, " "))
+		print("dvd size:".ljust(14, " "),
+				(str(SizeFolder(self.folder)) + " data").rjust(15, " ")),
+		print()
 
 def main():
-	dataFolderSizeToCopy = Size(dataFolder)
-	par2FolderSizeToCopy = Size(par2Folder)
-	duplFolderSizeToCopy = Size(duplFolder)
-
 	dataFiles = getFileList(dataFolder)
 	par2Files = getFileList(par2Folder)
 	duplFiles = getFileList(duplFolder)
@@ -50,27 +58,24 @@ def main():
 	n = -1
 	while len(dataFiles) > 0 or len(par2Files) > 0:
 		n += 1
-		dvd = DVD(n, dataFolderSizeToCopy, par2FolderSizeToCopy, duplFolderSizeToCopy)
+		dvd = DVD(n, SizeList(dataFiles), SizeList(par2Files), SizeList(duplFiles))
 		
 		for f in duplFiles:
-			fsize = os.path.getsize(f)
-			dvd.addDupl(f, fsize)
-		
-		for f in dataFiles:
-			fsize = os.path.getsize(f)
-			if dvd.usableSizeData < fsize:
+			dvd.addDupl(f, os.path.getsize(f))
+	
+		for f in dataFiles[:]: # iterate over copy of list
+			err = dvd.addData(f, os.path.getsize(f))
+			if err != None:
 				break
-			dvd.addData(f, fsize)
 			dataFiles.remove(f)
-			dataFolderSizeToCopy -= fsize
 		
-		for f in par2Files:
-			fsize = os.path.getsize(f)
-			if dvd.usableSizePar2 < fsize:
+		for f in par2Files[:]: # iterate over copy of list
+			err = dvd.addPar2(f, os.path.getsize(f))
+			if err != None:
 				break
-			dvd.addPar2(f, fsize)
 			par2Files.remove(f)
-			par2FolderSizeToCopy -= fsize
+		
+		dvd.save()
 
 def getFileList(folder):
 	files = []
@@ -83,14 +88,21 @@ def getFileList(folder):
 	files.sort()
 	return files
 
-def Size(Folderpath):
-	print("calculating size of " + Folderpath + "...\t", end="")
+def SizeFolder(Folderpath, exclude=[]):
 	size = 0
 	for path, dirs, files in os.walk(Folderpath):
 		for f in files:
+			# skip files in exclude list
 			fp = os.path.join(path, f)
+			if any(e in fp for e in exclude):
+				continue
 			size += os.path.getsize(fp)
-	print(size)
+	return size
+
+def SizeList(FileList):
+	size = 0
+	for f in FileList:
+		size += os.path.getsize(f)
 	return size
 
 if __name__ == "__main__":
