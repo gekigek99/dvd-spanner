@@ -42,11 +42,14 @@ class DVD():
 			fdest = self.fileDic[forig]
 			os.path.exists(os.path.dirname(fdest)) or os.makedirs(os.path.dirname(fdest), exist_ok=True)
 			shutil.copy(forig, fdest)
+		self.writtenSizeData = SizeFolder(self.folder, exclude=["_par2\\", "_dupl\\"])
+		self.writtenSizePar2 = SizeFolder(os.path.join(self.folder, "_par2\\"))
+		self.writtenSizeDupl = SizeFolder(os.path.join(self.folder, "_dupl\\"))
 		print("folder size:".ljust(14, " "),
-				# !!! add log: % of data+par2 dedicated to par2 folder
-				(str(SizeFolder(self.folder, exclude=["_par2\\", "_dupl\\"])) + " data").rjust(15, " "),
-				(str(SizeFolder(os.path.join(self.folder, "_par2\\"))) + " par2").rjust(15, " "),
-				(str(SizeFolder(os.path.join(self.folder, "_dupl\\"))) + " dupl").rjust(15, " "))
+				(str(self.writtenSizeData)+" data").rjust(15, " "),
+				(str(self.writtenSizePar2)+" par2").rjust(15, " "),
+				(str(self.writtenSizeDupl)+" dupl").rjust(15, " "),
+				(str(int(10000*self.writtenSizePar2/(self.writtenSizeData+self.writtenSizePar2))/100)+" par2 %").rjust(15, " "))
 		print("dvd size:".ljust(14, " "),
 				(str(SizeFolder(self.folder)) + " data").rjust(15, " ")),
 		print()
