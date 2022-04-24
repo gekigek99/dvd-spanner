@@ -1,4 +1,4 @@
-import os, shutil
+import os, shutil, time
 
 dataFolder = ".\\example\\data\\"	# folder where data is stored and must be splitted on multiple dvds
 par2Folder = ".\\example\\par2\\"	# folder where par2 data is stored and must be splitted on multiple dvds
@@ -7,9 +7,25 @@ outFolder  = ".\\out\\"
 
 dvdSize = 500000000
 
-class DVD():
-	# !!! add dvd load status bar
+class statusBar():
+	def __init__(self, lenght, p1=0, p2=0):
+		self.lenght = lenght
+		self.bar = ""
+		self.p1 = p1
+		self.p2 = p2
+	
+	def show(self):
+		self.bar = ""
+		self.bar += "#" * int(self.lenght * self.p2/self.p1)
+		self.bar += "-" * int(self.lenght * (self.p1-self.p2)/self.p1)
+		print("\r" + self.bar, end="")
+	
+	def addp1(self):
+		self.p1 += 1
+	def addp2(self):
+		self.p2 += 1
 
+class DVD():
 	def __init__(self, id, dataSizeReserved, par2SizeReserved, duplSizeReserved):
 		self.usableSizeData = dataSizeReserved
 		self.usableSizePar2 = par2SizeReserved
@@ -17,6 +33,7 @@ class DVD():
 		self.id = id
 		self.folder = os.path.join(outFolder, "dvd" + str(self.id))
 		self.dic = {}
+		self.statusBar = statusBar(84)
 
 		os.path.exists(outFolder) or os.makedirs(outFolder, exist_ok=True)
 		os.path.exists(self.folder) or os.makedirs(self.folder, exist_ok=True)
@@ -33,6 +50,7 @@ class DVD():
 			return "file too big"
 		self.dic[file] = os.path.join(self.folder, file.replace(dataFolder, ""))
 		self.usableSizeData -= fsize
+		self.statusBar.addp1()
 		return None
 
 	def addPar2(self, file):
@@ -41,12 +59,14 @@ class DVD():
 			return "file too big"
 		self.dic[file] = os.path.join(self.folder, file.replace(par2Folder, "_par2\\"))
 		self.usableSizePar2 -= fsize
+		self.statusBar.addp1()
 		return None
 	
 	def addDupl(self, file):
 		fsize = os.path.getsize(file)
 		self.dic[file] = os.path.join(self.folder, file.replace(duplFolder, "_dupl\\"))
 		self.usableSizeDupl -= fsize
+		self.statusBar.addp1()
 		return None
 	
 	def save(self):
@@ -57,6 +77,9 @@ class DVD():
 			if os.path.isfile(ori):
 				os.path.exists(os.path.dirname(des)) or os.makedirs(os.path.dirname(des), exist_ok=True)
 				shutil.copy2(ori, des)
+			self.statusBar.addp2()
+			self.statusBar.show()
+		
 		self.writtenSize = SizeFolder(self.folder)
 		self.writtenSizePar2 = SizeFolder(os.path.join(self.folder, "_par2\\"))
 		self.writtenSizeDupl = SizeFolder(os.path.join(self.folder, "_dupl\\"))
@@ -64,6 +87,8 @@ class DVD():
 		self.warning = ""
 		if self.writtenSize > 0.95 * dvdSize:
 			self.warning = "DVD"+str(self.id)+" is near/exceding dvd size limit"
+		
+		print()
 		print("written fold:".ljust(16, " "),
 				(str(self.writtenSizeData)+" data").rjust(16, " "),
 				(str(self.writtenSizePar2)+" par2").rjust(16, " "),
@@ -78,10 +103,11 @@ class DVD():
 				(str(int(10000*(self.writtenSize)/dvdSize)/100) + " % dvd").rjust(16, " ")
 			)
 		print()
+
 		return self.warning
 
 def main():
-	maxFill = 0.5				# maxFill indicates how much the dvd can be filled with storage
+	maxFill = 0.9				# maxFill indicates how much the dvd can be filled with storage
 	availablePhysicalDvd = 15	# availablePhysicalDvd is the number of available blank dvds for the backup
 
 	if os.path.exists(outFolder):
@@ -132,7 +158,7 @@ def main():
 					int(storageXdvd * dataFilesSize/storageFiles),
 					int(storageXdvd * par2FilesSize/storageFiles),
 					duplFilesSize)
-		
+
 		for f in duplFiles:
 			dvd.addDupl(f)
 	
