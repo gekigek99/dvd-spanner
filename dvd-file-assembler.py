@@ -16,7 +16,7 @@ class DVD():
 		self.usableSizeDupl = duplSizeReserved
 		self.id = id
 		self.folder = os.path.join(outFolder, "dvd" + str(self.id))
-		self.fileDic = {}
+		self.dic = {}
 
 		os.path.exists(outFolder) or os.makedirs(outFolder, exist_ok=True)
 		os.path.exists(self.folder) or os.makedirs(self.folder, exist_ok=True)
@@ -31,7 +31,7 @@ class DVD():
 		fsize = os.path.getsize(file)
 		if self.usableSizeData < fsize:
 			return "file too big"
-		self.fileDic[file] = os.path.join(self.folder, file.replace(dataFolder, ""))
+		self.dic[file] = os.path.join(self.folder, file.replace(dataFolder, ""))
 		self.usableSizeData -= fsize
 		return None
 
@@ -39,21 +39,24 @@ class DVD():
 		fsize = os.path.getsize(file)
 		if self.usableSizePar2 < fsize:
 			return "file too big"
-		self.fileDic[file] = os.path.join(self.folder, file.replace(par2Folder, "_par2\\"))
+		self.dic[file] = os.path.join(self.folder, file.replace(par2Folder, "_par2\\"))
 		self.usableSizePar2 -= fsize
 		return None
 	
 	def addDupl(self, file):
 		fsize = os.path.getsize(file)
-		self.fileDic[file] = os.path.join(self.folder, file.replace(duplFolder, "_dupl\\"))
+		self.dic[file] = os.path.join(self.folder, file.replace(duplFolder, "_dupl\\"))
 		self.usableSizeDupl -= fsize
 		return None
 	
 	def save(self):
-		for forig in self.fileDic:
-			fdest = self.fileDic[forig]
-			os.path.exists(os.path.dirname(fdest)) or os.makedirs(os.path.dirname(fdest), exist_ok=True)
-			shutil.copy(forig, fdest)
+		for ori in self.dic:
+			des = self.dic[ori]
+			if os.path.isdir(ori):
+				os.path.exists(des) or os.makedirs(des, exist_ok=True)
+			if os.path.isfile(ori):
+				os.path.exists(os.path.dirname(des)) or os.makedirs(os.path.dirname(des), exist_ok=True)
+				shutil.copy2(ori, des)
 		self.writtenSize = SizeFolder(self.folder)
 		self.writtenSizePar2 = SizeFolder(os.path.join(self.folder, "_par2\\"))
 		self.writtenSizeDupl = SizeFolder(os.path.join(self.folder, "_dupl\\"))
@@ -155,10 +158,7 @@ def main():
 def getFileList(folder):
 	files = []
 	for (root, dirs, file) in os.walk(folder):
-		# !!! don't skip empty folders, add them to the list so that they will be moved to dvd
-		if dirs == [] and file == []:
-				print("skipping empty folder " + root)
-				continue
+		files.append(os.path.join(root, "")) # add root folder (in case the folder is empty)
 		for f in file:
 			files.append(os.path.join(root, f))
 	files.sort()
