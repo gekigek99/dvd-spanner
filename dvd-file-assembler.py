@@ -16,7 +16,7 @@ class DVD():
 		self.id = id
 		self.folder = os.path.join(outFolder, "dvd" + str(self.id))
 		self.fileDic = {}
-		
+
 		os.path.exists(outFolder) or os.makedirs(outFolder, exist_ok=True)
 		os.path.exists(self.folder) or os.makedirs(self.folder, exist_ok=True)
 		print(("DVD"+str(self.id)+" reserved:").ljust(16, " "),
@@ -46,6 +46,7 @@ class DVD():
 		fsize = os.path.getsize(file)
 		self.fileDic[file] = os.path.join(self.folder, file.replace(duplFolder, "_dupl\\"))
 		self.usableSizeDupl -= fsize
+		return None
 	
 	def save(self):
 		for forig in self.fileDic:
@@ -56,11 +57,15 @@ class DVD():
 		self.writtenSizePar2 = SizeFolder(os.path.join(self.folder, "_par2\\"))
 		self.writtenSizeDupl = SizeFolder(os.path.join(self.folder, "_dupl\\"))
 		self.writtenSizeData = self.writtenSize - self.writtenSizePar2 - self.writtenSizeDupl
+		self.warning = ""
+		if self.writtenSize > 0.95 * dvdSize:
+			self.warning = "DVD"+str(self.id)+" is near/exceding dvd size limit"
 		print("written fold:".ljust(16, " "),
 				(str(self.writtenSizeData)+" data").rjust(16, " "),
 				(str(self.writtenSizePar2)+" par2").rjust(16, " "),
 				(str(self.writtenSizeDupl)+" dupl").rjust(16, " "),
-				(str(self.writtenSize)+" dvd").rjust(16, " ")
+				(str(self.writtenSize)+" dvd").rjust(16, " "),
+				self.warning
 			)
 		print("% of dvd:".ljust(16, " "),
 				(str(int(10000*self.writtenSizeData/dvdSize)/100)+" % data").rjust(16, " "),
@@ -69,6 +74,7 @@ class DVD():
 				(str(int(10000*(self.writtenSize)/dvdSize)/100) + " % dvd").rjust(16, " ")
 			)
 		print()
+		return self.warning
 
 def main():
 	# !!! add warning if predicted dvd size is too small (and tell how much % is possible to increase par2 size)
@@ -86,7 +92,9 @@ def main():
 	storageFiles = dataSize + par2Size + duplSize
 
 	# maxFill indicates how much the dvd can be filled with storage
-	maxFill = 0.5
+	maxFill = 1
+
+	warnings = []
 
 	n = -1
 	while len(dataFiles) > 0 or len(par2Files) > 0:
@@ -116,7 +124,12 @@ def main():
 				break
 			par2Files.remove(f)
 		
-		dvd.save()
+		warn = dvd.save()
+		if warn != "":
+			warnings.append(warn)
+	
+	if warnings != []:
+		print("one or more DVD reported warnings:\n" + "\n".join(warnings))
 
 def getFileList(folder):
 	files = []
