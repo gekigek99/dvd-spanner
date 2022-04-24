@@ -9,6 +9,8 @@ outFolder  = ".\\out\\"
 dvdSize = 500000000
 
 class DVD():
+	# !!! add dvd load status bar
+
 	def __init__(self, id, dataSizeReserved, par2SizeReserved, duplSizeReserved):
 		self.usableSizeData = dataSizeReserved
 		self.usableSizePar2 = par2SizeReserved
