@@ -107,7 +107,7 @@ class DVD():
 		return self.warning
 
 def main():
-	maxFill = 0.9				# maxFill indicates how much the dvd can be filled with storage
+	maxFill = 0.8				# maxFill indicates how much the dvd can be filled with storage
 	availablePhysicalDvd = 15	# availablePhysicalDvd is the number of available blank dvds for the backup
 
 	if os.path.exists(outFolder):
@@ -120,10 +120,8 @@ def main():
 	dataFilesSize = SizeList(dataFiles)
 	par2FilesSize = SizeList(par2Files)
 	duplFilesSize = SizeList(duplFiles)
+	storageFiles = (dataFilesSize+par2FilesSize+(duplFilesSize*availablePhysicalDvd))
 
-	# !!! fix wrong calc of storageFiles: should count that duplFilesSize is greater with multiple dvds
-	storageFiles = (dataFilesSize+par2FilesSize+duplFilesSize)
-	# !!! fix wrong calc of dvdRemaining: says 15 will be created but it creates 16
 	dvdRemaining = int(-((storageFiles) // -(maxFill * dvdSize)))	# estimate needed dvd (ceiling the value)
 	storageXdvd = int(1.02 * storageFiles/dvdRemaining)				# make it a big bigger to leave some space for play
 	par2FilesSizeMax = int((availablePhysicalDvd*maxFill*dvdSize) - dataFilesSize - duplFilesSize) # current max par2 folder size with current config
@@ -131,6 +129,8 @@ def main():
 	print("".ljust(50, "-"))
 	print("total storage:".ljust(22, " "),		str(storageFiles).rjust(12, " "),	"use of", dvdRemaining, "dvds at", str(maxFill*100) + "% maxfill")
 	print("max storage on dvd:".ljust(22, " "),	str(storageXdvd).rjust(12, " "),	"("+str(int(10000*storageXdvd/dvdSize)/100)+"%) of dvd")
+	if storageXdvd/dvdSize > 0.90 * maxFill:
+		print("WARNING: average dvd fill is near than maxFill! Check output dvd count!")
 	
 	print("par2 size now:".ljust(22, " "),		str(par2FilesSize).rjust(12, " "))
 	print("par2 size can reach:".ljust(22, " "),str(par2FilesSizeMax).rjust(12, " "),	"to use", availablePhysicalDvd, "dvds at", str(maxFill*100) + "% maxfill")
@@ -148,11 +148,13 @@ def main():
 		par2FilesSize = SizeList(par2Files)
 		duplFilesSize = SizeList(duplFiles)
 		
-		# !!! fix wrong calc of storageFiles: should count that duplFilesSize is greater with multiple dvds
-		storageFiles = (dataFilesSize+par2FilesSize+duplFilesSize)
+		storageFiles = (dataFilesSize+par2FilesSize+(duplFilesSize*availablePhysicalDvd))
 		dvdRemaining = int(-((storageFiles) // -(maxFill * dvdSize))) # estimate needed dvd (ceiling the value)
+		print(dvdRemaining, "dvds required")
+		if dvdRemaining > availablePhysicalDvd:
+			print("WARNING: dvd required are more than available!")
+		
 		storageXdvd = int(1.02 * storageFiles/dvdRemaining) # make it a big bigger to leave some space for play
-		print(dvdRemaining, "dvds to be created")
 		
 		dvd = DVD(n,
 					int(storageXdvd * dataFilesSize/storageFiles),
@@ -177,6 +179,8 @@ def main():
 		warn = dvd.save()
 		if warn != "":
 			warnings.append(warn)
+		
+		availablePhysicalDvd -= 1
 	
 	if warnings != []:
 		print("one or more DVD reported warnings:\n" + "\n".join(warnings))
